@@ -91,6 +91,7 @@ const Home: React.FC = () => {
   const [publishProcess, setpublishProcess] = useState(0);
 
   const [open, setOpen] = React.useState(false);
+  const [publishing, setpublishing] = React.useState(false);
   const [total, sTotal] = useState(0);
   const [successPkg, ssuccessPkg] = useState(0);
   const [failedPkg, sfailedPkg] = useState(0);
@@ -102,6 +103,8 @@ const Home: React.FC = () => {
 
       console.time('load directory');
       const entryDir = await window.showDirectoryPicker();
+      // start scan dir
+      setpublishing(true);
       async function putWriter(handle) {
         if (handle.name.split('')[0] === '.') return; // skip .bin, .pnpm
         let fileHandle;
@@ -112,6 +115,7 @@ const Home: React.FC = () => {
         }
         const f = await fileHandle.getFile();
         const c = await cat(f);
+        console.log(c);
         const pkgManifast = JSON.parse(c as string);
 
         try {
@@ -127,28 +131,26 @@ const Home: React.FC = () => {
       }
 
       if (entryDir.name === 'node_modules') {
-        const totalSize = entryDir.getSize();
+        let totalSize = 0;
         let totalAte = 0;
+
+        for await (const _ of entryDir.values()) {
+          totalSize++;
+        }
         for await (const handle of entryDir.values()) {
           if (handle.kind === 'directory') {
             if (handle.name.includes('@')) {
               for await (const handleN of handle.values()) {
                 if (handleN.kind === 'directory') {
                   await putWriter(handleN);
-                  const ate = handleN.getSize();
-                  totalAte += ate;
-                  const weightedProcess = (totalAte / totalSize) * 100 * 0.4;
-                  setpublishProcess(weightedProcess);
                 }
               }
             } else {
               await putWriter(handle);
-              const ate = handle.getSize();
-              totalAte += ate;
-              const weightedProcess = (totalAte / totalSize) * 100 * 0.4;
-              setpublishProcess(weightedProcess);
             }
           }
+          totalAte++;
+          setpublishProcess((totalAte / totalSize) * 40);
         }
       } else if (entryDir.name.includes('@')) {
         for await (const handle of entryDir.values()) {
@@ -211,16 +213,17 @@ const Home: React.FC = () => {
       );
       console.timeEnd('send to server');
 
+      setpublishing(false);
+
       sTotal(count);
       sfailedPkg(failed);
       ssuccessPkg(count - failed);
-
       setOpen(true);
 
       setTimeout(() => {
         setOpen(false);
         // @ts-ignore
-        if (res.length - failed > 0) dispatch.packages.getPackages();
+        if (count - failed > 0) dispatch.packages.getPackages();
       }, 3000);
     } catch (e) {}
   }
@@ -239,12 +242,24 @@ const Home: React.FC = () => {
   }, [dispatch]);
   return (
     <div className="container content" data-testid="home-page-container">
-      <LinearProgressWithLabel value={publishProcess} />
-      <Collapse in={open}>
-        <Alert
-          style={{ position: 'fixed', width: '300px', bottom: '300px', right: '50px' }}
-          severity="success"
+      {publishing ? (
+        <div
+          style={{
+            position: 'fixed',
+            width: '300px',
+            height: '50px',
+            bottom: '200px',
+            right: '50px',
+          }}
         >
+          <LinearProgressWithLabel value={publishProcess} />
+        </div>
+      ) : null}
+      <Collapse
+        in={open}
+        style={{ position: 'fixed', width: '250px', bottom: '300px', right: '50px' }}
+      >
+        <Alert severity="success">
           <div style={{ color: 'green' }}>本轮成功个数{`${successPkg}`}</div>
           <div style={{ color: 'red' }}>本轮失败个数{`${failedPkg}`}</div>
           <div style={{ color: 'black' }}>本轮上传总数{`${total}`}</div>
