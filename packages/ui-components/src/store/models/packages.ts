@@ -25,10 +25,12 @@ export const packages = createModel<RootModel>()({
   },
   effects: (dispatch) => ({
     async getPackages(_payload, state) {
+      // console.log(`package number before: ${state.packages.response.length}`);
       const basePath = stripTrailingSlash(state.configuration.config.base);
       try {
         const payload: Manifest[] = await API.request(`${basePath}${APIRoute.PACKAGES}`);
         dispatch.packages.savePackages(payload);
+        // console.log(`package number after: ${payload.length}`);
       } catch (error: any) {
         // eslint-disable-next-line no-console
         console.error({

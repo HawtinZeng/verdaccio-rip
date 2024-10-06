@@ -3,16 +3,38 @@
 /* eslint-disable */
 import { TarWriter } from '@gera2ld/tarjs';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import { Alert, Button, Collapse } from '@mui/material';
+import {
+  Alert,
+  Box,
+  Button,
+  Collapse,
+  LinearProgress,
+  LinearProgressProps,
+  Typography,
+} from '@mui/material';
 import { Buffer } from 'buffer';
 import * as pako from 'pako';
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { Dispatch, Loading, PackageList, RootState } from '../..';
 import { buildMetadata, generatePackageMetadata } from './generatePackageMetadata';
 
+function LinearProgressWithLabel(props: LinearProgressProps & { value: number }) {
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+      <Box sx={{ width: '100%', mr: 1 }}>
+        <LinearProgress variant="determinate" {...props} />
+      </Box>
+      <Box sx={{ minWidth: 35 }}>
+        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+          {`${Math.round(props.value)}%`}
+        </Typography>
+      </Box>
+    </Box>
+  );
+}
 async function putFolder(
   folder: any,
   currentLoc: string = '',
@@ -66,43 +88,70 @@ const Home: React.FC = () => {
   const ref = useRef<HTMLInputElement>(null);
   const dispatch = useDispatch<Dispatch>();
   const registry = useSelector((state: RootState) => state.configuration.config.base);
+  const [publishProcess, setpublishProcess] = useState(0);
+
+  const [open, setOpen] = React.useState(false);
+  const [total, sTotal] = useState(0);
+  const [successPkg, ssuccessPkg] = useState(0);
+  const [failedPkg, sfailedPkg] = useState(0);
 
   async function clickUpload() {
     try {
       const writers: TarWriter[] = [];
       const pkgManifasts: any = [];
 
+      console.time('load directory');
       const entryDir = await window.showDirectoryPicker();
-
       async function putWriter(handle) {
-        const fileHandle = await handle.getFileHandle('package.json');
+        if (handle.name.split('')[0] === '.') return; // skip .bin, .pnpm
+        let fileHandle;
+        try {
+          fileHandle = await handle.getFileHandle('package.json'); // skip without package.json
+        } catch (e) {
+          return;
+        }
         const f = await fileHandle.getFile();
         const c = await cat(f);
         const pkgManifast = JSON.parse(c as string);
 
+        try {
+          const readmeHandle = await handle.getFileHandle('README.md');
+          const f = await readmeHandle.getFile();
+          const c = await cat(f);
+          pkgManifast.readme = c;
+        } catch (e) {}
         const w = new TarWriter();
         pkgManifasts.push(pkgManifast);
-
         writers.push(w);
         await putFolder(handle, 'package', w, true);
       }
 
       if (entryDir.name === 'node_modules') {
-        for (const handle of entryDir.values()) {
+        const totalSize = entryDir.getSize();
+        let totalAte = 0;
+        for await (const handle of entryDir.values()) {
           if (handle.kind === 'directory') {
             if (handle.name.includes('@')) {
-              for (const handle of entryDir.values()) {
-                if (handle.kind === 'directory') {
-                  await putWriter(handle);
+              for await (const handleN of handle.values()) {
+                if (handleN.kind === 'directory') {
+                  await putWriter(handleN);
+                  const ate = handleN.getSize();
+                  totalAte += ate;
+                  const weightedProcess = (totalAte / totalSize) * 100 * 0.4;
+                  setpublishProcess(weightedProcess);
                 }
               }
             } else {
               await putWriter(handle);
+              const ate = handle.getSize();
+              totalAte += ate;
+              const weightedProcess = (totalAte / totalSize) * 100 * 0.4;
+              setpublishProcess(weightedProcess);
             }
           }
         }
       } else if (entryDir.name.includes('@')) {
-        for (const handle of entryDir.values()) {
+        for await (const handle of entryDir.values()) {
           if (handle.kind === 'directory') {
             await putWriter(handle);
           }
@@ -110,30 +159,70 @@ const Home: React.FC = () => {
       } else {
         await putWriter(entryDir);
       }
-      const buffers = await Promise.all(writers.map((w) => w.write())).then((allBlobs) =>
-        Promise.all(allBlobs.map((blob) => blob.arrayBuffer()))
+
+      console.timeEnd('load directory');
+
+      console.time('generate tgz');
+      let ate = 0;
+      const total = writers.length;
+
+      const arrayBuffer = await Promise.all(
+        writers.map((w) =>
+          w
+            .write()
+            .then((blob) => {
+              return blob.arrayBuffer();
+            })
+            .then((b) => {
+              const int8Arr = new Uint8Array(b);
+              const res = pako.gzip(int8Arr, {})!;
+
+              ate++;
+              setpublishProcess(40 + (ate / total) * 40);
+
+              return res;
+            })
+        )
       );
-      const arrayBuffer = buffers.map((b) => {
-        const int8Arr = new Uint8Array(b);
-        return pako.gzip(int8Arr, {})!;
-      });
-      arrayBuffer.map((b, i) => saveUint8ArrayToFile(b, pkgManifasts[i].name + '.tgz'));
+      console.timeEnd('generate tgz');
+
+      // For debug:
+      // arrayBuffer.map((b, i) => saveUint8ArrayToFile(b, pkgManifasts[i].name + '.tgz'));
+      console.time('send to server');
       const metadatas = await Promise.all(
         arrayBuffer.map((d, idx) => {
           return buildMetadata(registry, pkgManifasts[idx], Buffer.from(d));
         })
       );
+      const count = metadatas.length;
+      let cur = 0;
+      let failed = 0;
 
-      const allRes = await Promise.all(
-        metadatas.map((metadata) => dispatch.publish.publishAct(metadata as any))
+      await Promise.all(
+        metadatas.map((metadata) => {
+          const p = dispatch.publish.publishAct(metadata as any);
+          return p.then((res) => {
+            console.log(res);
+            if (res === undefined) failed++;
+            cur++;
+            setpublishProcess(80 + (cur / count) * 20);
+          });
+        })
       );
+      console.timeEnd('send to server');
+
+      sTotal(count);
+      sfailedPkg(failed);
+      ssuccessPkg(count - failed);
+
       setOpen(true);
+
       setTimeout(() => {
         setOpen(false);
+        // @ts-ignore
+        if (res.length - failed > 0) dispatch.packages.getPackages();
       }, 3000);
-    } catch (e) {
-      console.log(e);
-    }
+    } catch (e) {}
   }
 
   useEffect(() => {
@@ -144,26 +233,21 @@ const Home: React.FC = () => {
   const packages = useSelector((state: RootState) => state.packages.response);
   const isLoading = useSelector((state: RootState) => state?.loading?.models.packages);
 
-  const [open, setOpen] = React.useState(false);
-
   useEffect(() => {
     // @ts-ignore
     dispatch.packages.getPackages();
   }, [dispatch]);
   return (
     <div className="container content" data-testid="home-page-container">
+      <LinearProgressWithLabel value={publishProcess} />
       <Collapse in={open}>
         <Alert
+          style={{ position: 'fixed', width: '300px', bottom: '300px', right: '50px' }}
           severity="success"
-          style={{
-            position: 'fixed',
-            top: '100px',
-            width: '600px',
-            left: '50%',
-            transform: 'translate(-50%, 0)',
-          }}
         >
-          发布成功
+          <div style={{ color: 'green' }}>本轮成功个数{`${successPkg}`}</div>
+          <div style={{ color: 'red' }}>本轮失败个数{`${failedPkg}`}</div>
+          <div style={{ color: 'black' }}>本轮上传总数{`${total}`}</div>
         </Alert>
       </Collapse>
       {isLoading ? <Loading /> : <PackageList packages={packages} />}
@@ -173,7 +257,7 @@ const Home: React.FC = () => {
         onClick={clickUpload}
         role={undefined}
         startIcon={<CloudUploadIcon />}
-        style={{ position: 'fixed', bottom: '100px', right: '100px' }}
+        style={{ position: 'fixed', bottom: '100px', right: '50px' }}
         tabIndex={-1}
         variant="contained"
       >

@@ -14,7 +14,7 @@ export const publish = createModel<RootModel>()({
     async publishAct(metadata) {
       const basePath = 'http://localhost:8000';
       try {
-        await API.request(basePath + `/${metadata.name}`, 'PUT', {
+        return await API.request(basePath + `/${metadata.name}`, 'PUT', {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(metadata),
         });

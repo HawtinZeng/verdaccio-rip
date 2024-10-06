@@ -102,6 +102,7 @@ export const buildMetadata = async (registry, manifest, tarballData) => {
     data: tarballData.toString('base64'),
     length: tarballData.length,
   };
+  root.readme = manifest.readme;
 
   return root;
 };
