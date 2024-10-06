@@ -44,7 +44,6 @@ const defineAPI = async function (config: IConfig, storage: Storage): Promise<an
   app.use(rateLimit(config.serverSettings.rateLimit));
 
   const errorReportingMiddlewareWrap = errorReportingMiddleware(logger);
-
   // Router setup
   app.use(log(logger));
   app.use(errorReportingMiddlewareWrap);

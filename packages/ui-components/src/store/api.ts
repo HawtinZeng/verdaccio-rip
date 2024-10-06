@@ -44,7 +44,6 @@ class API {
   ): Promise<T> {
     const token = storage.getItem('token');
     const headers = new Headers(options.headers);
-
     if (token && headers.has(AuthHeader) === false) {
       headers.set(AuthHeader, `Bearer ${token}`);
       options.headers = headers;

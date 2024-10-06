@@ -5,6 +5,7 @@ import { download } from './download';
 import { login } from './login';
 import { manifest } from './manifest';
 import { packages } from './packages';
+import { publish } from './publish';
 import { search } from './search';
 
 export interface RootModel extends Models<RootModel> {
@@ -14,5 +15,14 @@ export interface RootModel extends Models<RootModel> {
   download: typeof download;
   login: typeof login;
   search: typeof search;
+  publish: typeof publish;
 }
-export const models: RootModel = { packages, configuration, search, download, login, manifest };
+export const models: RootModel = {
+  packages,
+  configuration,
+  search,
+  download,
+  login,
+  manifest,
+  publish,
+};

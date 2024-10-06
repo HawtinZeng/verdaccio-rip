@@ -4,7 +4,6 @@
   "ignorePaths": ["docker-examples/**"],
   "schedule": ["before 3:00am on the 3 day of the month"],
   "ignoreDeps": [
-    "customprefix-auth",
     "eslint-plugin-verdaccio",
     "@verdaccio/test-helper",
     "docker/setup-buildx-action",
