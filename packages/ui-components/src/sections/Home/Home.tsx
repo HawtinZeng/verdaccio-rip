@@ -45,7 +45,13 @@ async function putFolder(
 
   for await (const handle of folder.values()) {
     if (handle.kind === 'file') {
-      const content = (await handle.getFile()) as File;
+      let content;
+      try {
+        content = (await handle.getFile()) as File;
+      } catch (e) {
+        console.log(e);
+        continue;
+      }
       writer.addFile(`${currentLoc}/${handle.name}`, content);
     } else if (handle.kind === 'directory') {
       await putFolder(handle, currentLoc, writer);
@@ -55,8 +61,10 @@ async function putFolder(
 }
 const cat = (f) =>
   new Promise((resolve) =>
+    // @ts-ignore
     Object.assign(new FileReader(), {
       onload() {
+        // @ts-ignore
         resolve(this.result);
       },
     }).readAsText(f)
@@ -64,11 +72,14 @@ const cat = (f) =>
 async function saveUint8ArrayToFile(data: Uint8Array, filename: string) {
   const blob = new Blob([data], { type: 'application/octet-stream' });
   const url = URL.createObjectURL(blob);
+  // @ts-ignore
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
+  // @ts-ignore
   document.body.appendChild(a);
   a.click();
+  // @ts-ignore
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
@@ -76,11 +87,14 @@ function saveObjectAsJson(object, filename) {
   const jsonString = JSON.stringify(object, null, 2); // Convert object to JSON string
   const blob = new Blob([jsonString], { type: 'application/json' }); // Create a Blob
   const url = URL.createObjectURL(blob); // Create a URL for the Blob
+  // @ts-ignore
   const a = document.createElement('a'); // Create an anchor element
   a.href = url; // Set the URL as the href
   a.download = filename; // Set the desired file name
+  // @ts-ignore
   document.body.appendChild(a); // Append the anchor to the body
   a.click(); // Programmatically click the anchor to trigger the download
+  // @ts-ignore
   document.body.removeChild(a); // Remove the anchor from the document
   URL.revokeObjectURL(url); // Revoke the Blob URL
 }
@@ -102,32 +116,55 @@ const Home: React.FC = () => {
       const pkgManifasts: any = [];
 
       console.time('load directory');
+      // @ts-ignore
       const entryDir = await window.showDirectoryPicker();
       // start scan dir
       setpublishing(true);
       async function putWriter(handle) {
-        if (handle.name.split('')[0] === '.') return; // skip .bin, .pnpm
-        let fileHandle;
         try {
-          fileHandle = await handle.getFileHandle('package.json'); // skip without package.json
-        } catch (e) {
-          return;
-        }
-        const f = await fileHandle.getFile();
-        const c = await cat(f);
-        console.log(c);
-        const pkgManifast = JSON.parse(c as string);
+          if (handle.name.split('')[0] === '.') return; // skip .bin, .pnpm
+          let fileHandle;
+          try {
+            fileHandle = await handle.getFileHandle('package.json'); // skip without package.json
+          } catch (e) {
+            return;
+          }
+          console.log('putWriter');
+          // handle nested dependencies
+          try {
+            const node_modules = await handle.getDirectoryHandle('node_modules');
+            for await (const handle of node_modules.values()) {
+              if (handle.name.includes('@')) {
+                for await (const handleN of handle.values()) {
+                  if (handleN.kind === 'directory') {
+                    await putWriter(handleN);
+                  }
+                }
+              } else {
+                await putWriter(handle);
+              }
+            }
+          } catch (e) {}
 
-        try {
-          const readmeHandle = await handle.getFileHandle('README.md');
-          const f = await readmeHandle.getFile();
+          const f = await fileHandle.getFile();
           const c = await cat(f);
-          pkgManifast.readme = c;
-        } catch (e) {}
-        const w = new TarWriter();
-        pkgManifasts.push(pkgManifast);
-        writers.push(w);
-        await putFolder(handle, 'package', w, true);
+          // console.log(c);
+          const pkgManifast = JSON.parse(c as string);
+
+          try {
+            const readmeHandle = await handle.getFileHandle('README.md');
+            const f = await readmeHandle.getFile();
+            const c = await cat(f);
+            pkgManifast.readme = c;
+          } catch (e) {}
+          const w = new TarWriter();
+          pkgManifasts.push(pkgManifast);
+          writers.push(w);
+          await putFolder(handle, 'package', w, true);
+        } catch (e) {
+          console.log(e);
+          console.log(`error: ${handle.name}`);
+        }
       }
 
       if (entryDir.name === 'node_modules') {
@@ -138,16 +175,14 @@ const Home: React.FC = () => {
           totalSize++;
         }
         for await (const handle of entryDir.values()) {
-          if (handle.kind === 'directory') {
-            if (handle.name.includes('@')) {
-              for await (const handleN of handle.values()) {
-                if (handleN.kind === 'directory') {
-                  await putWriter(handleN);
-                }
+          if (handle.name.includes('@')) {
+            for await (const handleN of handle.values()) {
+              if (handleN.kind === 'directory') {
+                await putWriter(handleN);
               }
-            } else {
-              await putWriter(handle);
             }
+          } else {
+            await putWriter(handle);
           }
           totalAte++;
           setpublishProcess((totalAte / totalSize) * 40);

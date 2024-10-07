@@ -3,7 +3,6 @@ import cors from 'cors';
 import buildDebug from 'debug';
 import express from 'express';
 import _ from 'lodash';
-import AuditMiddleware from 'verdaccio-audit';
 
 import apiEndpoint from '@verdaccio/api';
 import { Auth } from '@verdaccio/auth';
@@ -79,7 +78,7 @@ const defineAPI = async function (config: IConfig, storage: Storage): Promise<an
   if (plugins.length === 0) {
     logger.info('none middleware plugins has been defined, adding audit middleware by default');
     // @ts-ignore
-    plugins.push(new AuditMiddleware({ enabled: true, strict_ssl: true }, { config, logger }));
+    // plugins.push(new AuditMiddleware({ enabled: true, strict_ssl: true }, { config, logger }));
   }
 
   plugins.forEach((plugin: pluginUtils.ExpressMiddleware<IConfig, {}, Auth>) => {

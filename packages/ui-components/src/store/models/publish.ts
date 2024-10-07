@@ -2,6 +2,7 @@ import { createModel } from '@rematch/core';
 
 import type { RootModel } from '.';
 import API from '../api';
+import { stripTrailingSlash } from './utils';
 
 /**
  *
@@ -11,8 +12,11 @@ export const publish = createModel<RootModel>()({
   state: {},
   reducers: {},
   effects: () => ({
-    async publishAct(metadata) {
-      const basePath = 'http://localhost:8000';
+    async publishAct(metadata, state) {
+      // For build env
+      const basePath = stripTrailingSlash(state.configuration.config.base);
+      // For local dev env
+      // const basePath = 'http://localhost:8000';
       try {
         return await API.request(basePath + `/${metadata.name}`, 'PUT', {
           headers: { 'Content-Type': 'application/json' },

@@ -1,7 +1,7 @@
 {
   "name": "customprefix-auth",
   "version": "2.0.0",
-  "private": true,
+  "private": false,
   "description": "fake plugin for test",
   "author": "Juan Picado <juanpicado19@gmail.com>",
   "license": "MIT",

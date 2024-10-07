@@ -1,7 +1,7 @@
 FROM --platform=${BUILDPLATFORM:-linux/amd64} node:21-alpine AS builder
 
 ENV NODE_ENV=development \
-    VERDACCIO_BUILD_REGISTRY=https://registry.npmjs.org
+    VERDACCIO_BUILD_REGISTRY=https://registry.npmmirror.com
 
 RUN apk --no-cache add openssl ca-certificates wget && \
     apk --no-cache add g++ gcc libgcc libstdc++ linux-headers make python3 && \
@@ -11,10 +11,9 @@ RUN apk --no-cache add openssl ca-certificates wget && \
 
 WORKDIR /opt/verdaccio-build
 COPY . .
-RUN npm -g i pnpm@8.9.0 && \
+RUN npm -g i pnpm@9.12.0 && \
     pnpm config set registry $VERDACCIO_BUILD_REGISTRY && \
     pnpm install --frozen-lockfile --ignore-scripts && \
-    rm -Rf test && \
     pnpm run build
 # FIXME: need to remove devDependencies from the build    
 # NODE_ENV=production pnpm install --frozen-lockfile --ignore-scripts

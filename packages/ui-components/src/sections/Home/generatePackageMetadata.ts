@@ -96,13 +96,13 @@ export const buildMetadata = async (registry, manifest, tarballData) => {
 
   manifest.dist.tarball = new URL(tarballURI, registry).href.replace(/^https:\/\//, 'http://');
 
-  root._attachments = {};
-  root._attachments[tarballName] = {
+  (root as any)._attachments = {};
+  (root as any)._attachments[tarballName] = {
     content_type: 'application/octet-stream',
     data: tarballData.toString('base64'),
     length: tarballData.length,
   };
-  root.readme = manifest.readme;
-
+  (root as any).readme = manifest.readme;
+  console.log(root);
   return root;
 };

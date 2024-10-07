@@ -1,7 +1,7 @@
 {
   "name": "@verdaccio/local-publish",
   "version": "0.0.2",
-  "private": true,
+  "private": false,
   "description": "trigger server for local development",
   "author": "Juan Picado <juanpicado19@gmail.com>",
   "license": "MIT",
