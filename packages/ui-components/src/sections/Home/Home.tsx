@@ -19,7 +19,7 @@ import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { Dispatch, Loading, PackageList, RootState } from '../..';
-import { buildMetadata, generatePackageMetadata } from './generatePackageMetadata';
+import { buildMetadata } from './generatePackageMetadata';
 
 function LinearProgressWithLabel(props: LinearProgressProps & { value: number }) {
   return (
@@ -35,6 +35,8 @@ function LinearProgressWithLabel(props: LinearProgressProps & { value: number })
     </Box>
   );
 }
+
+let count = 0;
 async function putFolder(
   folder: any,
   currentLoc: string = '',
@@ -53,6 +55,9 @@ async function putFolder(
         continue;
       }
       writer.addFile(`${currentLoc}/${handle.name}`, content);
+
+      count++;
+      console.log(`已加载${count}个文件${count > 10000 ? '这么多，太强了！' : ''}`);
     } else if (handle.kind === 'directory') {
       await putFolder(handle, currentLoc, writer);
     }
@@ -98,6 +103,7 @@ function saveObjectAsJson(object, filename) {
   document.body.removeChild(a); // Remove the anchor from the document
   URL.revokeObjectURL(url); // Revoke the Blob URL
 }
+
 const Home: React.FC = () => {
   const ref = useRef<HTMLInputElement>(null);
   const dispatch = useDispatch<Dispatch>();
@@ -111,6 +117,7 @@ const Home: React.FC = () => {
   const [failedPkg, sfailedPkg] = useState(0);
 
   async function clickUpload() {
+    count = 0;
     try {
       const writers: TarWriter[] = [];
       const pkgManifasts: any = [];
@@ -122,14 +129,12 @@ const Home: React.FC = () => {
       setpublishing(true);
       async function putWriter(handle) {
         try {
-          if (handle.name.split('')[0] === '.') return; // skip .bin, .pnpm
           let fileHandle;
           try {
             fileHandle = await handle.getFileHandle('package.json'); // skip without package.json
           } catch (e) {
             return;
           }
-          console.log('putWriter');
           // handle nested dependencies
           try {
             const node_modules = await handle.getDirectoryHandle('node_modules');
@@ -171,21 +176,28 @@ const Home: React.FC = () => {
         let totalSize = 0;
         let totalAte = 0;
 
+        let pnpmHandle: FileSystemDirectoryHandle | undefined; //.pnpm dir handle
         for await (const _ of entryDir.values()) {
           totalSize++;
+          if (_.name === '.pnpm') pnpmHandle = _;
         }
-        for await (const handle of entryDir.values()) {
-          if (handle.name.includes('@')) {
-            for await (const handleN of handle.values()) {
-              if (handleN.kind === 'directory') {
-                await putWriter(handleN);
-              }
-            }
-          } else {
-            await putWriter(handle);
+        if (pnpmHandle) {
+          for await (const handle of pnpmHandle.values()) {
+            if (handle.kind !== 'directory') continue;
+
+            const nesetedNodeModules = (
+              await (handle as FileSystemDirectoryHandle).values?.().next()
+            )?.value;
+            if (nesetedNodeModules) await putWriterToModules(nesetedNodeModules, putWriter);
           }
-          totalAte++;
-          setpublishProcess((totalAte / totalSize) * 40);
+        } else {
+          totalAte = (await putWriterToModules(
+            entryDir,
+            putWriter,
+            totalAte,
+            totalSize,
+            setpublishProcess
+          )) as number;
         }
       } else if (entryDir.name.includes('@')) {
         for await (const handle of entryDir.values()) {
@@ -260,7 +272,34 @@ const Home: React.FC = () => {
         // @ts-ignore
         if (count - failed > 0) dispatch.packages.getPackages();
       }, 3000);
-    } catch (e) {}
+    } catch (e) {
+      console.log(e);
+    }
+
+    async function putWriterToModules(
+      entryDir: any,
+      putWriter: (handle: any) => Promise<void>,
+      totalAte?: number,
+      totalSize?: number,
+      setProcess?: (number) => void
+    ) {
+      for await (const handle of entryDir.values()) {
+        if (handle.name.includes('@')) {
+          for await (const handleN of handle.values()) {
+            if (handleN.kind === 'directory') {
+              await putWriter(handleN);
+            }
+          }
+        } else {
+          await putWriter(handle);
+        }
+        if (totalAte !== undefined && totalSize !== undefined && setProcess !== undefined) {
+          totalAte++;
+          setProcess((totalAte / totalSize) * 40);
+        }
+      }
+      return totalAte;
+    }
   }
 
   useEffect(() => {

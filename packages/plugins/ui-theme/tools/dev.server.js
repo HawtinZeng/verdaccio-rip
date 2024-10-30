@@ -36,7 +36,7 @@ new WebpackDevServer(compiler, {
   },
   proxy: [
     {
-      context: ['/-/verdaccio/**', '**/*.tgz'],
+      context: ['/-/verdaccio/**', '**/*.tgz', '/*'],
       target: 'http://localhost:8000',
     },
   ],
