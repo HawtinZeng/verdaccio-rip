@@ -1,29 +1,8 @@
 import DataWorker from 'web-worker:./worker.ts';
 
-type GroupParams = any[][];
-
-function workerReturnWrapper(this: any, method: (...args: any[]) => Promise<any>) {
-  this.addEventListener('message', ({ data: params }) => {
-    const res: any = [];
-    console.log(`params: ${params}`);
-    params.forEach((oneParam) => {
-      const oneRes = method(oneParam);
-      oneRes
-        .then((resolvedRes) => {
-          res.push(resolvedRes);
-        })
-        .catch((errorMsg) => {
-          res.push(errorMsg);
-        })
-        .finally(() => {
-          if (res.length === params.length) {
-            this.postMessage(res);
-          }
-        });
-    });
-  });
-}
-
+type Options = {
+  isBatch: boolean;
+};
 export class Workerpool {
   workerNum: number = navigator.hardwareConcurrency;
   constructor() {
@@ -31,11 +10,16 @@ export class Workerpool {
       throw new Error("can't find webworker");
     }
   }
-
-  exec(method: (...args: any) => Promise<any>, params: GroupParams) {
+  exec(method: (args: any[]) => Promise<any>, params: any[], op?: Options) {
     const dataWorker = new DataWorker();
 
-    dataWorker.postMessage('Hello World!');
+    dataWorker.postMessage({ function: method.toString(), args: params, options: op });
+
+    return new Promise((res) => {
+      dataWorker.onmessage = (event: MessageEvent) => {
+        res(event.data);
+      };
+    });
     // const workload = Math.ceil(params.length / this.workerNum);
     // const res: any[] = [];
     // for (let workerIdx = 0; workerIdx < this.workerNum; workerIdx++) {
