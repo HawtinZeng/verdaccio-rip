@@ -11,5 +11,5 @@ export function MultilpleWorkers() {
     [1, 2, 3, 6]
     // @ts-ignore
   ).then((d) => console.log(d));
-  return <div>MultilpleWorkers</div>;
+  return <div>MultilpleWorkers123</div>;
 }
