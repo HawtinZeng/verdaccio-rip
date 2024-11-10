@@ -1,0 +1,24 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "target": "es5",
+    "module": "ES6",
+    "strict": true,
+    "declaration": true,
+    "strictNullChecks": true,
+    "types": ["node", "jest", "express", "@testing-library/jest-dom"],
+    "preserveSymlinks": true,
+    "composite": true,
+    "incremental": true,
+    "declarationMap": true,
+    "removeComments": false,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "noImplicitAny": false
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.test.ts"],
+  "references": []
+}

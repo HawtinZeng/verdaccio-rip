@@ -4,7 +4,7 @@
 import styled from '@emotion/styled';
 import Box from '@mui/material/Box';
 import FlagsIcon from 'country-flag-icons/react/3x2';
-import React, { StrictMode, Suspense, useEffect } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import { Router } from 'react-router-dom';
@@ -16,7 +16,7 @@ import {
   Loading,
   Theme,
   TranslatorProvider,
-  useConfig,
+  useConfig
 } from '@verdaccio/ui-components';
 
 import Contributors from '../components/Contributors';
@@ -30,21 +30,21 @@ import AppRoute, { history } from './AppRoute';
 
 const StyledBox = styled(Box)<{ theme?: Theme }>(({ theme }) => {
   return {
-    backgroundColor: theme?.palette.background.default,
+    backgroundColor: theme?.palette?.background.default
   };
 });
 
 const StyledBoxContent = styled(Box)<{ theme?: Theme }>(({ theme }) => ({
-  [`@media screen and (min-width: ${theme?.breakPoints.container}px)`]: {
-    maxWidth: theme?.breakPoints.container,
+  [`@media screen and (min-width: ${theme?.breakPoints?.container}px)`]: {
+    maxWidth: theme?.breakPoints?.container,
     width: '100%',
     marginLeft: 'auto',
-    marginRight: 'auto',
-  },
+    marginRight: 'auto'
+  }
 }));
 
 const Flags = styled('span')<{ theme?: Theme }>(() => ({
-  width: '25px',
+  width: '25px'
 }));
 
 function CustomInfoDialog({ onCloseDialog, title, isOpen }) {
@@ -61,10 +61,10 @@ function CustomInfoDialog({ onCloseDialog, title, isOpen }) {
               <ReactMarkdown>{about}</ReactMarkdown>
               <Contributors />
             </>
-          ),
+          )
         },
         { element: <ReactMarkdown>{license}</ReactMarkdown> },
-        { element: <Support /> },
+        { element: <Support /> }
       ]}
       tabs={[
         { label: t('about') },
@@ -75,8 +75,8 @@ function CustomInfoDialog({ onCloseDialog, title, isOpen }) {
             <Flags>
               <FlagsIcon.UA />
             </Flags>
-          ),
-        },
+          )
+        }
       ]}
     />
   );
@@ -90,21 +90,19 @@ const App: React.FC = () => {
   }, []);
 
   return (
-    <StrictMode>
-      <TranslatorProvider i18n={i18n} listLanguages={listLanguages} onMount={loadDayJSLocale}>
-        <Suspense fallback={<Loading />}>
-          <StyledBox display="flex" flexDirection="column" height="100%">
-            <Router history={history}>
-              <Header HeaderInfoDialog={CustomInfoDialog} />
-              <StyledBoxContent flexGrow={1}>
-                <AppRoute />
-              </StyledBoxContent>
-            </Router>
-            {configOptions.showFooter && <Footer />}
-          </StyledBox>
-        </Suspense>
-      </TranslatorProvider>
-    </StrictMode>
+    <TranslatorProvider i18n={i18n} listLanguages={listLanguages} onMount={loadDayJSLocale}>
+      <Suspense fallback={<Loading />}>
+        <StyledBox display="flex" flexDirection="column" height="100%">
+          <Router history={history}>
+            <Header HeaderInfoDialog={CustomInfoDialog} />
+            <StyledBoxContent flexGrow={1}>
+              <AppRoute />
+            </StyledBoxContent>
+          </Router>
+          {configOptions.showFooter && <Footer />}
+        </StyledBox>
+      </Suspense>
+    </TranslatorProvider>
   );
 };
 

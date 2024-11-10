@@ -10,16 +10,22 @@ import {
   Collapse,
   LinearProgress,
   LinearProgressProps,
-  Typography,
+  Typography
 } from '@mui/material';
 import { Buffer } from 'buffer';
 import * as pako from 'pako';
 import React, { useRef, useState } from 'react';
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import test from 'workerpool';
 
 import { Dispatch, Loading, PackageList, RootState } from '../..';
+import { Workerpool } from './Workerpool';
 import { buildMetadata } from './generatePackageMetadata';
+
+test();
+
+const workerpool = new Workerpool();
 
 function LinearProgressWithLabel(props: LinearProgressProps & { value: number }) {
   return (
@@ -71,7 +77,7 @@ const cat = (f) =>
       onload() {
         // @ts-ignore
         resolve(this.result);
-      },
+      }
     }).readAsText(f)
   );
 async function saveUint8ArrayToFile(data: Uint8Array, filename: string) {
@@ -133,6 +139,7 @@ const Home: React.FC = () => {
           try {
             fileHandle = await handle.getFileHandle('package.json'); // skip without package.json
           } catch (e) {
+            console.log(e);
             return;
           }
           // handle nested dependencies
@@ -149,7 +156,9 @@ const Home: React.FC = () => {
                 await putWriter(handle);
               }
             }
-          } catch (e) {}
+          } catch (e) {
+            console.log(e);
+          }
 
           const f = await fileHandle.getFile();
           const c = await cat(f);
@@ -161,14 +170,15 @@ const Home: React.FC = () => {
             const f = await readmeHandle.getFile();
             const c = await cat(f);
             pkgManifast.readme = c;
-          } catch (e) {}
+          } catch (e) {
+            console.log(e);
+          }
           const w = new TarWriter();
           pkgManifasts.push(pkgManifast);
           writers.push(w);
           await putFolder(handle, 'package', w, true);
         } catch (e) {
           console.log(e);
-          console.log(`error: ${handle.name}`);
         }
       }
 
@@ -179,7 +189,10 @@ const Home: React.FC = () => {
         let pnpmHandle: FileSystemDirectoryHandle | undefined; //.pnpm dir handle
         for await (const _ of entryDir.values()) {
           totalSize++;
-          if (_.name === '.pnpm') pnpmHandle = _;
+          if (_.name === '.pnpm') {
+            pnpmHandle = _;
+            break;
+          }
         }
         if (pnpmHandle) {
           for await (const handle of pnpmHandle.values()) {
@@ -226,8 +239,8 @@ const Home: React.FC = () => {
               const int8Arr = new Uint8Array(b);
               const res = pako.gzip(int8Arr, {})!;
 
-              ate++;
-              setpublishProcess(40 + (ate / total) * 40);
+              // ate++;
+              // setpublishProcess(40 + (ate / total) * 40);
 
               return res;
             })
@@ -258,6 +271,7 @@ const Home: React.FC = () => {
           });
         })
       );
+
       console.timeEnd('send to server');
 
       setpublishing(false);
@@ -323,7 +337,7 @@ const Home: React.FC = () => {
             width: '300px',
             height: '50px',
             bottom: '200px',
-            right: '50px',
+            right: '50px'
           }}
         >
           <LinearProgressWithLabel value={publishProcess} />

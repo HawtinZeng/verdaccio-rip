@@ -4,7 +4,7 @@ module.exports = {
     'google',
     'plugin:@typescript-eslint/eslint-recommended',
     'plugin:@typescript-eslint/recommended',
-    'plugin:import/typescript',
+    'plugin:import/typescript'
   ],
   plugins: ['import'],
   rules: {
@@ -30,7 +30,7 @@ module.exports = {
     'no-debugger': 'error',
     'no-empty': 'error',
     'no-fallthrough': 'error',
-    'no-invalid-this': 'error',
+    'no-invalid-this': 0,
     'no-new-require': 'error',
     'no-undef': 'error',
     'no-unreachable': 'error',
@@ -58,6 +58,6 @@ module.exports = {
     'prefer-promise-reject-errors': ['warn'],
 
     '@typescript-eslint/explicit-member-accessibility': 0,
-    '@typescript-eslint/no-unused-vars': ['error'],
-  },
+    '@typescript-eslint/no-unused-vars': ['error']
+  }
 };

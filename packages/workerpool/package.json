@@ -1,0 +1,19 @@
+{
+  "name": "@zenghawtin/workerpool",
+  "version": "1.0.0",
+  "description": "A module about web worker pool",
+  "main": "dist/index.js",
+  "scripts": {
+    "rollup": "rollup -c",
+    "rollup-watch": "rollup -c --watch"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@rollup/plugin-typescript": "^12.1.1",
+    "rollup": "^4.24.4",
+    "tslib": "^2.8.1",
+    "typescript": "^5.6.3"
+  }
+}
