@@ -1,8 +1,11 @@
+import DataWorker from 'web-worker:./worker.ts';
+
 type GroupParams = any[][];
+
 function workerReturnWrapper(this: any, method: (...args: any[]) => Promise<any>) {
-  console.log(this);
-  this.onmessage((params) => {
+  this.addEventListener('message', ({ data: params }) => {
     const res: any = [];
+    console.log(`params: ${params}`);
     params.forEach((oneParam) => {
       const oneRes = method(oneParam);
       oneRes
@@ -29,28 +32,24 @@ export class Workerpool {
     }
   }
 
-  exec(method: Function, params: GroupParams) {
-    const dataObj = '(' + workerReturnWrapper + ')();';
-    const blob = new Blob([dataObj]);
+  exec(method: (...args: any) => Promise<any>, params: GroupParams) {
+    const dataWorker = new DataWorker();
 
-    // eslint-disable-next-line no-undef
-    const blobURL = (window.URL ? URL : webkitURL).createObjectURL(blob);
-
-    const workload = Math.ceil(params.length / this.workerNum);
-    const res: any[] = [];
-
-    for (let workerIdx = 0; workerIdx < this.workerNum; workerIdx++) {
-      const startParams = workerIdx * workload;
-      let endParams = workerIdx * workload + workload - 1;
-      endParams = endParams === startParams ? endParams + 1 : endParams;
-
-      const p = params.slice(startParams, endParams);
-      const worker = new Worker(blobURL);
-      worker.postMessage(p);
-      worker.onmessage = (event: MessageEvent) => {
-        worker.terminate();
-        res.push(event.data);
-      };
-    }
+    dataWorker.postMessage('Hello World!');
+    // const workload = Math.ceil(params.length / this.workerNum);
+    // const res: any[] = [];
+    // for (let workerIdx = 0; workerIdx < this.workerNum; workerIdx++) {
+    //   const startParams = workerIdx * workload;
+    //   let endParams = workerIdx * workload + workload - 1;
+    //   endParams = endParams === startParams ? endParams + 1 : endParams;
+    //   const p = params.slice(startParams, endParams);
+    //   const worker = new Worker('worker.js');
+    //   console.log(`p: ${p}`);
+    //   worker.postMessage(p);
+    //   worker.onmessage = (event: MessageEvent) => {
+    //     worker.terminate();
+    //     res.push(event.data);
+    //   };
+    // }
   }
 }

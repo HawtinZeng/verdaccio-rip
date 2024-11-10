@@ -19,7 +19,7 @@
     "outDir": "./dist",
     "noImplicitAny": false
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "src/worker.ts"],
   "exclude": ["src/**/*.test.ts"],
   "references": []
 }
