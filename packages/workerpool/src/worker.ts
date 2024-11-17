@@ -1,8 +1,8 @@
 self.onmessage = ({ data }: any) => {
-  console.log(data);
   const func = eval('(' + data.function + ')');
 
   const args = data.args;
+
   const options = data.options;
   if (options?.isBatch) {
     const task = args.map((arg: any[]) => func(arg));
